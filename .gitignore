@@ -1,0 +1,8 @@
+*.png
+*.svg
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+.DS_Store
