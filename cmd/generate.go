@@ -4,15 +4,11 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/draw"
 	"image/png"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/skip2/go-qrcode"
 	"github.com/urfave/cli/v2"
 )
 
@@ -39,48 +35,23 @@ func GenerateCommand() *cli.Command {
 				Value:   "#ffffff",
 				Aliases: []string{"c"},
 			},
+			&cli.StringFlag{
+				Name:    "style",
+				Usage:   "Module style: square, rounded, triangle (default: square)",
+				Value:   "square",
+				Aliases: []string{"s"},
+			},
 		},
 		Action: func(c *cli.Context) error {
 			url := c.String("url")
 			outputPath := c.String("output")
 			colorHex := c.String("color")
+			style := c.String("style")
 
-			// Initialize random seed
-			rand.Seed(time.Now().UnixNano())
-
-			// Create QR code with highest error correction
-			qr, err := qrcode.New(url, qrcode.Highest)
+			img, err := GenerateQRCodeImage(url, colorHex, style)
 			if err != nil {
-				return fmt.Errorf("failed to create QR code: %w", err)
+				return fmt.Errorf("failed to generate QR code: %w", err)
 			}
-
-			// Scale factor for high resolution
-			scale := 10
-
-			bitmap := qr.Bitmap()
-			size := len(bitmap)
-			imgSize := size * 8 * scale
-
-			img := image.NewRGBA(image.Rect(0, 0, imgSize, imgSize))
-			// Fill background with black
-			draw.Draw(img, img.Bounds(), &image.Uniform{color.Black}, image.Point{}, draw.Src)
-			// Set QR code module color to user-specified color
-			customColor, err := parseHexColor(colorHex)
-			if err != nil {
-				return fmt.Errorf("invalid color hex: %v", err)
-			}
-
-			// Draw QR code modules with random rounded corners
-			for y := 0; y < size; y++ {
-				for x := 0; x < size; x++ {
-					if bitmap[y][x] {
-						cornerRadius := (rand.Intn(3) + 1) * scale
-						drawRoundedRect(img, x*8*scale, y*8*scale, 8*scale, 8*scale, cornerRadius, customColor)
-					}
-				}
-			}
-
-			// No logo overlay, just the QR code
 
 			outputDir := filepath.Dir(outputPath)
 			if outputDir != "." {
@@ -99,25 +70,9 @@ func GenerateCommand() *cli.Command {
 				return fmt.Errorf("failed to save QR code: %w", err)
 			}
 
-			fmt.Printf("QR code with centered logo generated successfully: %s\n", outputPath)
+			fmt.Printf("QR code generated successfully: %s\n", outputPath)
 			return nil
 		},
-	}
-}
-
-// drawRoundedRect draws a rounded rectangle on the image
-func drawRoundedRect(img *image.RGBA, x, y, width, height, radius int, c color.Color) {
-	draw.Draw(img, image.Rect(x+radius, y, x+width-radius, y+height), &image.Uniform{c}, image.Point{}, draw.Src)
-	draw.Draw(img, image.Rect(x, y+radius, x+width, y+height-radius), &image.Uniform{c}, image.Point{}, draw.Src)
-	for i := 0; i < radius; i++ {
-		for j := 0; j < radius; j++ {
-			if (i-radius)*(i-radius)+(j-radius)*(j-radius) <= radius*radius {
-				img.Set(x+i, y+j, c)
-				img.Set(x+width-1-i, y+j, c)
-				img.Set(x+i, y+height-1-j, c)
-				img.Set(x+width-1-i, y+height-1-j, c)
-			}
-		}
 	}
 }
 
